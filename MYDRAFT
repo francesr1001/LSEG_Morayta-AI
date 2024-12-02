@@ -124,3 +124,55 @@ html_df.to_csv(output_csv_path, index=False, encoding="utf-8")
 
 print(f"Exported HTML content of the first 10 story IDs to {output_csv_path}")
 --------------------------------------------------------------------------------------------------
+import pandas as pd
+import eikon as ek
+import time
+import json
+from IPython.display import HTML
+
+file_path = "FixnewsWithStory.csv"
+data = pd.read_csv(file_path)
+
+if 'storyId' not in data.columns:
+    raise ValueError("The CSV file does not contain a 'storyId' column.")
+
+try:
+    with open("fetched_stories.json", "r", encoding="utf-8") as f:
+        fetched_stories = json.load(f)
+except FileNotFoundError:
+    fetched_stories = {}
+
+def fetch_story_html(story_id):
+    try:
+        if story_id in fetched_stories:
+            print(f"Story {story_id} already cached.")
+            return fetched_stories[story_id]
+        else:
+            story_html = ek.get_news_story(story_id)
+            fetched_stories[story_id] = story_html
+            return story_html
+    except Exception as e:
+        return f"Error fetching story for {story_id}: {e}"
+
+html_contents = []
+batch_size = 10
+for i in range(0, len(data), batch_size):
+    batch = data['storyId'][i:i+batch_size]
+    for story_id in batch:
+        html_content = fetch_story_html(story_id)
+        html_contents.append({'storyId': story_id, 'htmlContent': html_content})
+        time.sleep(1)
+    with open("fetched_stories.json", "w", encoding="utf-8") as f:
+        json.dump(fetched_stories, f)
+    print(f"Processed batch {i // batch_size + 1}. Waiting before next batch...")
+    time.sleep(60)
+
+html_only = [item['htmlContent'] for item in html_contents]
+full_html = "<br><hr><br>".join(html_only)
+HTML(full_html)
+
+data_to_export = pd.DataFrame(html_contents)
+output_csv_path = "FetchedStoriesWithHTML.csv"
+data_to_export.to_csv(output_csv_path, index=False, encoding="utf-8")
+
+print(f"Exported HTML content to {output_csv_path}")
