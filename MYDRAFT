@@ -1,0 +1,34 @@
+import pandas as pd
+import eikon as ek
+from IPython.display import HTML
+from bs4 import BeautifulSoup
+
+# Set your Eikon API key
+ek.set_app_key("your_api_key_here")
+
+# Load the CSV file into a DataFrame
+file_path = "FixnewsWithStory.csv"  # Replace with your actual file path
+data = pd.read_csv(file_path)
+
+# Ensure 'storyId' column exists
+if 'storyId' not in data.columns:
+    raise ValueError("The CSV file does not contain a 'storyId' column.")
+
+# Function to fetch and render story in HTML
+def fetch_story_html(story_id):
+    try:
+        # Fetch the story content using Eikon API
+        story_html = ek.get_news_story(story_id)
+        return story_html
+    except Exception as e:
+        return f"Error fetching story for {story_id}: {e}"
+
+# Iterate over all story IDs and fetch their HTML content
+html_contents = []
+for story_id in data['storyId']:
+    html_content = fetch_story_html(story_id)
+    html_contents.append(html_content)
+
+# Render the stories in HTML (in Jupyter Notebook)
+full_html = "<br><hr><br>".join(html_contents)  # Combine all stories with separators
+HTML(full_html)
