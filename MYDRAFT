@@ -55,3 +55,24 @@ with open("fetched_stories.json", "w", encoding="utf-8") as f:
 # Render the stories in HTML (in Jupyter Notebook)
 full_html = "<br><hr><br>".join(html_contents)  # Combine all stories with separators
 HTML(full_html)
+
+
+
+import pandas as pd
+import json
+
+# Load the cached stories from the JSON file
+try:
+    with open("fetched_stories.json", "r", encoding="utf-8") as f:
+        fetched_stories = json.load(f)
+except FileNotFoundError:
+    raise FileNotFoundError("The 'fetched_stories.json' file does not exist. Run the previous code to generate it.")
+
+# Convert the fetched stories dictionary to a DataFrame
+data_to_export = pd.DataFrame(list(fetched_stories.items()), columns=['storyId', 'htmlContent'])
+
+# Save the DataFrame to a new CSV file
+output_csv_path = "FetchedStoriesWithHTML.csv"
+data_to_export.to_csv(output_csv_path, index=False, encoding="utf-8")
+
+print(f"Exported HTML content to {output_csv_path}")
