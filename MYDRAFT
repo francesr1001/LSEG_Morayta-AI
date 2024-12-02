@@ -77,3 +77,62 @@ data_to_export.to_csv(output_csv_path, index=False, encoding="utf-8")
 
 print(f"Exported HTML content to {output_csv_path}")
 --------------------------------------------------------------------------------------------------
+import pandas as pd
+import eikon as ek
+import time
+import json
+
+# Set your Eikon API key
+ek.set_app_key("your_api_key_here")
+
+# Load the CSV file into a DataFrame
+file_path = "FixnewsWithStory.csv"  # Replace with your actual file path
+data = pd.read_csv(file_path)
+
+# Ensure 'storyId' column exists
+if 'storyId' not in data.columns:
+    raise ValueError("The CSV file does not contain a 'storyId' column.")
+
+# Get the first 10 story IDs
+first_10_story_ids = data['storyId'].head(10)
+
+# Load cached stories if available
+try:
+    with open("fetched_stories.json", "r", encoding="utf-8") as f:
+        fetched_stories = json.load(f)
+except FileNotFoundError:
+    fetched_stories = {}
+
+# Function to fetch story HTML
+def fetch_story_html(story_id):
+    try:
+        if story_id in fetched_stories:
+            print(f"Story {story_id} already cached.")
+            return fetched_stories[story_id]
+        else:
+            # Fetch the story content using Eikon API
+            story_html = ek.get_news_story(story_id)
+            fetched_stories[story_id] = story_html  # Cache the result
+            return story_html
+    except Exception as e:
+        return f"Error fetching story for {story_id}: {e}"
+
+# Retrieve HTML for the first 10 story IDs
+html_contents = []
+for story_id in first_10_story_ids:
+    html_content = fetch_story_html(story_id)
+    html_contents.append({'storyId': story_id, 'htmlContent': html_content})
+    time.sleep(1)  # Pause to avoid hitting rate limits
+
+# Save fetched stories to a JSON file for future use
+with open("fetched_stories.json", "w", encoding="utf-8") as f:
+    json.dump(fetched_stories, f)
+
+# Convert the list of dictionaries to a DataFrame
+html_df = pd.DataFrame(html_contents)
+
+# Save the HTML content to a new CSV file
+output_csv_path = "First10FetchedStories.csv"
+html_df.to_csv(output_csv_path, index=False, encoding="utf-8")
+
+print(f"Exported HTML content of the first 10 story IDs to {output_csv_path}")
